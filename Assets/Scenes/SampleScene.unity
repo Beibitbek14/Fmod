@@ -1205,8 +1205,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e30b7fa6f96fdd64c9f8a216722a0352, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FmodMemoryTest
-  sfxEventPaths: []
-  musicEventPath: 
+  sfxEventPaths:
+  - event:/SFX/SFX_01
+  musicEventPath: event:/Music/Music_Test
   btnSnapshot1: {fileID: 1062264131}
   btnInitFmod: {fileID: 730467282}
   btnPlaySfx: {fileID: 1142175153}
