@@ -43,7 +43,7 @@ namespace FMODWrapper
             StopFade();
             _previousTrack = _currentTrack;
 
-            _currentTrack = FMODWrapper.Instance.CreateHandle(eventRef);
+            _currentTrack = FMODWrapper.CreateHandle(eventRef);
             if (!_currentTrack.IsValid) return;
 
             foreach (var (paramName, value) in initialParams)

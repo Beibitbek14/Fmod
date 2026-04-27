@@ -6,7 +6,6 @@ namespace FMODWrapper
 {
     public sealed class PlayBuilder
     {
-        private readonly FMODWrapper _fmodWrapper;
         private readonly EventReference _eventRef;
         private readonly Dictionary<string, float> _params = new();
         private Vector3? _position;
@@ -15,9 +14,8 @@ namespace FMODWrapper
         private float _volume = 1f;
         private int _priority = Config.Priority.Normal;
 
-        internal PlayBuilder(FMODWrapper fmodWrapper, EventReference eventRef)
+        internal PlayBuilder(EventReference eventRef)
         {
-            _fmodWrapper = fmodWrapper;
             _eventRef = eventRef;
         }
 
@@ -61,7 +59,7 @@ namespace FMODWrapper
 
         public FMODEventHandle Start()
         {
-            var handle = _fmodWrapper.CreateHandle(_eventRef);
+            var handle = FMODWrapper.CreateHandle(_eventRef);
             if (!handle.IsValid) return handle;
 
             foreach (var kv in _params)

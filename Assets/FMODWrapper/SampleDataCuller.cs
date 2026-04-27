@@ -22,7 +22,7 @@ namespace FMODWrapper
 
         [Header("Player")]
         [SerializeField] private Transform listenerTransform;
-
+        
         private EventDescription _description;
         private bool _samplesLoaded = true;
         private bool _descriptionValid;

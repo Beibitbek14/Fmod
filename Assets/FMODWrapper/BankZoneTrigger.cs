@@ -43,7 +43,7 @@ namespace FMODWrapper
         private void LoadBanks()
         {
             foreach (var bankName in banksToLoad)
-                FMODWrapper.Instance.LoadBankAsync(bankName, loadSamples: loadSamplesOnEnter);
+                FMODWrapper.LoadBankAsync(bankName, loadSamples: loadSamplesOnEnter);
         }
 
         private async UniTaskVoid UnloadDelayed(CancellationToken ct)
@@ -51,7 +51,7 @@ namespace FMODWrapper
             await UniTask.Delay(TimeSpan.FromSeconds(unloadDelay), cancellationToken: ct);
 
             foreach (var bankName in banksToLoad)
-                FMODWrapper.Instance.UnloadBank(bankName);
+                FMODWrapper.UnloadBank(bankName);
 
             _unloadCts?.Dispose();
             _unloadCts = null;

@@ -17,9 +17,10 @@ namespace FMODWrapper
 
         [Header("Voice Priority")]
         [SerializeField] [Range(0, 3)] private int priority = Config.Priority.Normal;
-
+        
         private FMODEventHandle _fmodEventHandle;
         private Rigidbody _rb;
+        
 
         public bool IsPlaying => _fmodEventHandle?.IsPlaying ?? false;
         public bool IsPaused => _fmodEventHandle?.IsPaused ?? false;
@@ -37,7 +38,7 @@ namespace FMODWrapper
         {
             Stop();
 
-            _fmodEventHandle = FMODWrapper.Instance
+            _fmodEventHandle = FMODWrapper
                 .Play(@event)
                 .WithVolume(volume)
                 .WithPriority(priority)

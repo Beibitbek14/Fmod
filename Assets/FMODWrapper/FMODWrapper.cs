@@ -9,28 +9,29 @@ using STOP_MODE = FMOD.Studio.STOP_MODE;
 
 namespace FMODWrapper
 {
-    public class FMODWrapper : MonoBehaviour
+    public static class FMODWrapper
     {
-        public static FMODWrapper Instance { get; private set; }
+        private static readonly List<string> CoreBanks = new()
+        {
+            Banks.Master, 
+            Banks.MasterStrings,
+            // Banks.Core
+        };
 
-        [Header("Core Banks")]
-        [SerializeField] private List<string> coreBanks = new() { Banks.Master, Banks.MasterStrings /*, Banks.Core*/ };
+        private static float _masterVolume = 1f;
+        // [Range(0f, 1f)] private static float _musicVolume = 1f;
+        // [Range(0f, 1f)] private static float _sfxVolume = 1f;
+        // [Range(0f, 1f)] private static float _voiceVolume = 1f;
 
-        [Header("Bus Volumes")]
-        [SerializeField, Range(0f, 1f)] private float masterVolume = 1f;
-        [SerializeField, Range(0f, 1f)] private float musicVolume = 1f;
-        [SerializeField, Range(0f, 1f)] private float sfxVolume = 1f;
-        [SerializeField, Range(0f, 1f)] private float voiceVolume = 1f;
-
-        private readonly Dictionary<string, BankEntry> _loadedBanks = new();
-        private readonly Dictionary<string, EventInstance> _snapshots = new();
-        private readonly Dictionary<string, CancellationTokenSource> _pendingLoads = new();
-        private readonly List<FMODEventHandle> _trackedHandles = new();
-
-        private Bus _masterBus;
-        private Bus _musicBus;
-        private Bus _sfxBus;
-        private Bus _voiceBus;
+        private static readonly Dictionary<string, BankEntry> LoadedBanks = new();
+        private static readonly Dictionary<string, EventInstance> Snapshots = new();
+        private static readonly Dictionary<string, CancellationTokenSource> PendingLoads = new();
+        private static readonly List<FMODEventHandle> TrackedHandles = new();
+        
+        private static Bus _masterBus;
+        // private static Bus _musicBus;
+        // private static Bus _sfxBus;
+        // private static Bus _voiceBus;
 
         private readonly struct BankEntry
         {
@@ -39,29 +40,25 @@ namespace FMODWrapper
             public BankEntry(Bank bank, bool isCore) { Bank = bank; IsCore = isCore; }
         }
 
-        private void Awake()
+        private static void Initialize()
         {
-            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-
             InitBuses();
             LoadCoreBanks();
             ApplyAllVolumes();
         }
 
-        private void Update()
+        private static void UpdateHandles()
         {
-            _trackedHandles.RemoveAll(h => !h.IsValid || h.IsStopped);
+            TrackedHandles.RemoveAll(h => !h.IsValid || h.IsStopped);
         }
 
-        private void OnDestroy()
+        private static void Destroy()
         {
             StopAll(allowFadeout: false);
             UnloadAllBanks();
         }
 
-        private void InitBuses()
+        private static void InitBuses()
         {
             _masterBus = RuntimeManager.GetBus(Buses.Master);
             // _musicBus  = RuntimeManager.GetBus(Buses.Music);
@@ -69,69 +66,70 @@ namespace FMODWrapper
             // _voiceBus  = RuntimeManager.GetBus(Buses.Voice);
         }
 
-        private void LoadCoreBanks()
+        private static void LoadCoreBanks()
         {
-            foreach (var bankName in coreBanks)
+            foreach (var bankName in CoreBanks)
                 LoadBankSync(bankName, isCore: true);
         }
 
         // ── Banks ────────────────────────────────────────────────────────────
 
-        public void LoadBankAsync(string bankName, bool loadSamples = false, Action onLoaded = null)
+        public static void LoadBankAsync(string bankName, bool loadSamples = false, Action onLoaded = null)
         {
-            if (_loadedBanks.ContainsKey(bankName)) { onLoaded?.Invoke(); return; }
-            if (_pendingLoads.ContainsKey(bankName)) return;
+            if (LoadedBanks.ContainsKey(bankName)) { onLoaded?.Invoke(); return; }
+            if (PendingLoads.ContainsKey(bankName)) return;
 
             var cts = new CancellationTokenSource();
-            _pendingLoads[bankName] = cts;
+            PendingLoads[bankName] = cts;
             LoadBankAsyncTask(bankName, loadSamples, onLoaded, cts.Token).Forget();
         }
 
-        public void UnloadBank(string bankName)
+        public static void UnloadBank(string bankName)
         {
-            if (_loadedBanks.TryGetValue(bankName, out var entry) && entry.IsCore) return;
+            if (LoadedBanks.TryGetValue(bankName, out var entry) && entry.IsCore) return;
 
-            if (_pendingLoads.TryGetValue(bankName, out var cts))
+            if (PendingLoads.TryGetValue(bankName, out var cts))
             {
                 cts.Cancel();
                 cts.Dispose();
-                _pendingLoads.Remove(bankName);
+                PendingLoads.Remove(bankName);
             }
 
             UnloadBankInternal(bankName);
         }
 
-        public void UnloadZoneBanks()
+        public static void UnloadZoneBanks()
         {
             var toUnload = new List<string>();
-            foreach (var kv in _loadedBanks)
+            foreach (var kv in LoadedBanks)
                 if (!kv.Value.IsCore) toUnload.Add(kv.Key);
             foreach (var bankName in toUnload)
                 UnloadBankInternal(bankName);
         }
 
-        public void LoadSamples(string bankName)
+        public static void LoadSamples(string bankName)
         {
-            if (_loadedBanks.TryGetValue(bankName, out var entry))
+            if (LoadedBanks.TryGetValue(bankName, out var entry))
                 entry.Bank.loadSampleData();
         }
 
-        public void UnloadSamples(string bankName)
+        public static void UnloadSamples(string bankName)
         {
-            if (_loadedBanks.TryGetValue(bankName, out var entry))
+            if (LoadedBanks.TryGetValue(bankName, out var entry))
                 entry.Bank.unloadSampleData();
         }
 
-        public bool IsBankLoaded(string bankName) => _loadedBanks.ContainsKey(bankName);
+        public static bool IsBankLoaded(string bankName) => LoadedBanks.ContainsKey(bankName);
 
         // ── One-shot ─────────────────────────────────────────────────────────
 
-        public void PlayOneShot(EventReference eventRef) => RuntimeManager.PlayOneShot(eventRef);
+        public static void PlayOneShot(EventReference eventRef) => 
+            RuntimeManager.PlayOneShot(eventRef);
 
-        public void PlayOneShot(EventReference eventRef, Vector3 worldPosition) =>
+        public static void PlayOneShot(EventReference eventRef, Vector3 worldPosition) =>
             RuntimeManager.PlayOneShot(eventRef, worldPosition);
 
-        public void PlayOneShot(EventReference eventRef, Vector3 worldPosition, Dictionary<string, float> parameters)
+        public static void PlayOneShot(EventReference eventRef, Vector3 worldPosition, Dictionary<string, float> parameters)
         {
             var instance = RuntimeManager.CreateInstance(eventRef);
             if (!instance.isValid()) return;
@@ -144,46 +142,46 @@ namespace FMODWrapper
 
         // ── Managed instances ────────────────────────────────────────────────
 
-        public PlayBuilder Play(EventReference eventRef) => new(this, eventRef);
+        public static PlayBuilder Play(EventReference eventRef) => new(eventRef);
 
-        public FMODEventHandle CreateHandle(EventReference eventRef)
+        public static FMODEventHandle CreateHandle(EventReference eventRef)
         {
             var handle = new FMODEventHandle(eventRef);
-            if (handle.IsValid) _trackedHandles.Add(handle);
+            if (handle.IsValid) TrackedHandles.Add(handle);
             return handle;
         }
 
-        public FMODEventHandle GetHandle(string eventPath) =>
-            _trackedHandles.Find(h => h.EventPath == eventPath && h.IsValid);
+        public static FMODEventHandle GetHandle(string eventPath) =>
+            TrackedHandles.Find(h => h.EventPath == eventPath && h.IsValid);
 
-        public List<FMODEventHandle> GetHandles(string eventPath) =>
-            _trackedHandles.FindAll(h => h.EventPath == eventPath && h.IsValid);
+        public static List<FMODEventHandle> GetHandles(string eventPath) =>
+            TrackedHandles.FindAll(h => h.EventPath == eventPath && h.IsValid);
 
         // ── Snapshots ────────────────────────────────────────────────────────
 
-        public void StartSnapshot(string snapshotPath)
+        public static void StartSnapshot(string snapshotPath)
         {
-            if (_snapshots.ContainsKey(snapshotPath)) return;
+            if (Snapshots.ContainsKey(snapshotPath)) return;
             var desc = RuntimeManager.GetEventDescription(snapshotPath);
             desc.createInstance(out EventInstance instance);
             instance.start();
-            _snapshots[snapshotPath] = instance;
+            Snapshots[snapshotPath] = instance;
         }
 
-        public void StopSnapshot(string snapshotPath, bool allowFadeout = true)
+        public static void StopSnapshot(string snapshotPath, bool allowFadeout = true)
         {
-            if (!_snapshots.TryGetValue(snapshotPath, out var instance)) return;
+            if (!Snapshots.TryGetValue(snapshotPath, out var instance)) return;
             instance.stop(allowFadeout ? STOP_MODE.ALLOWFADEOUT : STOP_MODE.IMMEDIATE);
             instance.release();
-            _snapshots.Remove(snapshotPath);
+            Snapshots.Remove(snapshotPath);
         }
 
         // ── Global parameters ────────────────────────────────────────────────
 
-        public void SetGlobalParam(string paramName, float value, bool ignoreSeekSpeed = false) =>
+        public static void SetGlobalParam(string paramName, float value, bool ignoreSeekSpeed = false) =>
             RuntimeManager.StudioSystem.setParameterByName(paramName, value, ignoreSeekSpeed);
 
-        public float? GetGlobalParam(string paramName)
+        public static float? GetGlobalParam(string paramName)
         {
             var result = RuntimeManager.StudioSystem.getParameterByName(paramName, out float value);
             return result == FMOD.RESULT.OK ? value : null;
@@ -191,45 +189,45 @@ namespace FMODWrapper
 
         // ── Volume ───────────────────────────────────────────────────────────
 
-        public float MasterVolume
+        public static float MasterVolume
         {
-            get => masterVolume;
-            set { masterVolume = Mathf.Clamp01(value); _masterBus.setVolume(masterVolume); }
+            get => _masterVolume;
+            set { _masterVolume = Mathf.Clamp01(value); _masterBus.setVolume(_masterVolume); }
         }
 
-        public float MusicVolume
-        {
-            get => musicVolume;
-            set { musicVolume = Mathf.Clamp01(value); _musicBus.setVolume(musicVolume); }
-        }
+        // public static float MusicVolume
+        // {
+        //     get => _musicVolume;
+        //     set { _musicVolume = Mathf.Clamp01(value); _musicBus.setVolume(_musicVolume); }
+        // }
+        
+        // public static float SfxVolume
+        // {
+        //     get => _sfxVolume;
+        //     set { _sfxVolume = Mathf.Clamp01(value); _sfxBus.setVolume(_sfxVolume); }
+        // }
+        
+        // public static float VoiceVolume
+        // {
+        //     get => _voiceVolume;
+        //     set { _voiceVolume = Mathf.Clamp01(value); _voiceBus.setVolume(_voiceVolume); }
+        // }
 
-        public float SfxVolume
-        {
-            get => sfxVolume;
-            set { sfxVolume = Mathf.Clamp01(value); _sfxBus.setVolume(sfxVolume); }
-        }
-
-        public float VoiceVolume
-        {
-            get => voiceVolume;
-            set { voiceVolume = Mathf.Clamp01(value); _voiceBus.setVolume(voiceVolume); }
-        }
-
-        public void SetBusVolume(string busPath, float volume) =>
+        public static void SetBusVolume(string busPath, float volume) =>
             RuntimeManager.GetBus(busPath).setVolume(Mathf.Clamp01(volume));
 
-        public void SetBusPaused(string busPath, bool paused) =>
+        public static void SetBusPaused(string busPath, bool paused) =>
             RuntimeManager.GetBus(busPath).setPaused(paused);
 
-        public void SetBusMuted(string busPath, bool muted) =>
+        public static void SetBusMuted(string busPath, bool muted) =>
             RuntimeManager.GetBus(busPath).setMute(muted);
 
-        public void SetVcaVolume(string vcaPath, float volume) =>
+        public static void SetVcaVolume(string vcaPath, float volume) =>
             RuntimeManager.GetVCA(vcaPath).setVolume(Mathf.Clamp01(volume));
 
         // ── Listener ─────────────────────────────────────────────────────────
 
-        public void SetListenerAttributes(Vector3 position, Vector3 velocity, Vector3 forward, Vector3 up, int listenerIndex = 0)
+        public static void SetListenerAttributes(Vector3 position, Vector3 velocity, Vector3 forward, Vector3 up, int listenerIndex = 0)
         {
             var attr = position.To3DAttributes();
             attr.velocity = velocity.ToFMODVector();
@@ -240,34 +238,34 @@ namespace FMODWrapper
 
         // ── Global control ───────────────────────────────────────────────────
 
-        public void StopAll(bool allowFadeout = false)
+        public static void StopAll(bool allowFadeout = false)
         {
-            foreach (var handle in _trackedHandles)
+            foreach (var handle in TrackedHandles)
                 handle.Stop(allowFadeout, release: true);
-            _trackedHandles.Clear();
+            TrackedHandles.Clear();
 
-            foreach (var kv in _snapshots)
+            foreach (var kv in Snapshots)
             {
                 kv.Value.stop(STOP_MODE.IMMEDIATE);
                 kv.Value.release();
             }
-            _snapshots.Clear();
+            Snapshots.Clear();
         }
 
-        public void StopAllOnBus(string busPath, bool allowFadeout = true) =>
+        public static void StopAllOnBus(string busPath, bool allowFadeout = true) =>
             RuntimeManager.GetBus(busPath).stopAllEvents(allowFadeout ? STOP_MODE.ALLOWFADEOUT : STOP_MODE.IMMEDIATE);
 
         // ── Internal ─────────────────────────────────────────────────────────
 
-        private void LoadBankSync(string bankName, bool isCore)
+        private static void LoadBankSync(string bankName, bool isCore)
         {
-            if (_loadedBanks.ContainsKey(bankName)) return;
+            if (LoadedBanks.ContainsKey(bankName)) return;
             RuntimeManager.LoadBank(bankName, loadSamples: isCore);
             RuntimeManager.StudioSystem.getBank($"bank:/{bankName}", out Bank bank);
-            _loadedBanks[bankName] = new BankEntry(bank, isCore);
+            LoadedBanks[bankName] = new BankEntry(bank, isCore);
         }
 
-        private async UniTaskVoid LoadBankAsyncTask(string bankName, bool loadSamples, Action onLoaded, CancellationToken ct)
+        private static async UniTaskVoid LoadBankAsyncTask(string bankName, bool loadSamples, Action onLoaded, CancellationToken ct)
         {
             await UniTask.Yield(ct);
 
@@ -276,7 +274,7 @@ namespace FMODWrapper
 
             if (!bank.isValid())
             {
-                _pendingLoads.Remove(bankName);
+                PendingLoads.Remove(bankName);
                 return;
             }
 
@@ -293,39 +291,31 @@ namespace FMODWrapper
                 while (state == LOADING_STATE.LOADING);
             }
 
-            _loadedBanks[bankName] = new BankEntry(bank, isCore: false);
-            _pendingLoads.Remove(bankName);
+            LoadedBanks[bankName] = new BankEntry(bank, isCore: false);
+            PendingLoads.Remove(bankName);
             onLoaded?.Invoke();
         }
 
-        private void UnloadBankInternal(string bankName)
+        private static void UnloadBankInternal(string bankName)
         {
-            if (!_loadedBanks.TryGetValue(bankName, out var entry)) return;
+            if (!LoadedBanks.TryGetValue(bankName, out var entry)) return;
             entry.Bank.unload();
-            _loadedBanks.Remove(bankName);
+            LoadedBanks.Remove(bankName);
         }
 
-        private void UnloadAllBanks()
+        private static void UnloadAllBanks()
         {
-            foreach (var kv in _loadedBanks)
+            foreach (var kv in LoadedBanks)
                 kv.Value.Bank.unload();
-            _loadedBanks.Clear();
+            LoadedBanks.Clear();
         }
 
-        private void ApplyAllVolumes()
+        private static void ApplyAllVolumes()
         {
-            _masterBus.setVolume(masterVolume);
-            _musicBus.setVolume(musicVolume);
-            _sfxBus.setVolume(sfxVolume);
-            _voiceBus.setVolume(voiceVolume);
+            _masterBus.setVolume(_masterVolume);
+            // _musicBus.setVolume(_musicVolume);
+            // _sfxBus.setVolume(_sfxVolume);
+            // _voiceBus.setVolume(_voiceVolume);
         }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (!Application.isPlaying) return;
-            ApplyAllVolumes();
-        }
-#endif
     }
 }
