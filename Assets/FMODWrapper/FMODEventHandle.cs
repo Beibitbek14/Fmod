@@ -10,12 +10,12 @@ namespace FMODWrapper
         private EventInstance _instance;
         private bool _disposed;
 
-        public string EventPath { get; }
+        public FMOD.GUID EventGuid { get; }
         public bool IsValid => !_disposed && _instance.isValid();
 
         internal FMODEventHandle(EventReference eventRef)
         {
-            EventPath = eventRef.Path;
+            EventGuid = eventRef.Guid;
             _instance = RuntimeManager.CreateInstance(eventRef);
         }
 

@@ -15,10 +15,12 @@ namespace FMODWrapper
         {
             Banks.Master, 
             Banks.MasterStrings,
+            
             // Banks.Core
         };
 
         private static float _masterVolume = 1f;
+        // Examples
         // [Range(0f, 1f)] private static float _musicVolume = 1f;
         // [Range(0f, 1f)] private static float _sfxVolume = 1f;
         // [Range(0f, 1f)] private static float _voiceVolume = 1f;
@@ -29,6 +31,7 @@ namespace FMODWrapper
         private static readonly List<FMODEventHandle> TrackedHandles = new();
         
         private static Bus _masterBus;
+        // Examples
         // private static Bus _musicBus;
         // private static Bus _sfxBus;
         // private static Bus _voiceBus;
@@ -151,11 +154,11 @@ namespace FMODWrapper
             return handle;
         }
 
-        public static FMODEventHandle GetHandle(string eventPath) =>
-            TrackedHandles.Find(h => h.EventPath == eventPath && h.IsValid);
+        public static FMODEventHandle GetHandle(FMOD.GUID guid) =>
+            TrackedHandles.Find(h => h.EventGuid == guid && h.IsValid);
 
-        public static List<FMODEventHandle> GetHandles(string eventPath) =>
-            TrackedHandles.FindAll(h => h.EventPath == eventPath && h.IsValid);
+        public static List<FMODEventHandle> GetHandles(FMOD.GUID guid) =>
+            TrackedHandles.FindAll(h => h.EventGuid == guid && h.IsValid);
 
         // ── Snapshots ────────────────────────────────────────────────────────
 
@@ -181,11 +184,6 @@ namespace FMODWrapper
         public static void SetGlobalParam(string paramName, float value, bool ignoreSeekSpeed = false) =>
             RuntimeManager.StudioSystem.setParameterByName(paramName, value, ignoreSeekSpeed);
 
-        public static float? GetGlobalParam(string paramName)
-        {
-            var result = RuntimeManager.StudioSystem.getParameterByName(paramName, out float value);
-            return result == FMOD.RESULT.OK ? value : null;
-        }
 
         // ── Volume ───────────────────────────────────────────────────────────
 
@@ -193,25 +191,27 @@ namespace FMODWrapper
         {
             get => _masterVolume;
             set { _masterVolume = Mathf.Clamp01(value); _masterBus.setVolume(_masterVolume); }
+        } 
+        
+        /* // Custom 
+        public static float MusicVolume
+        {
+            get => _musicVolume;
+            set { _musicVolume = Mathf.Clamp01(value); _musicBus.setVolume(_musicVolume); }
         }
 
-        // public static float MusicVolume
-        // {
-        //     get => _musicVolume;
-        //     set { _musicVolume = Mathf.Clamp01(value); _musicBus.setVolume(_musicVolume); }
-        // }
-        
-        // public static float SfxVolume
-        // {
-        //     get => _sfxVolume;
-        //     set { _sfxVolume = Mathf.Clamp01(value); _sfxBus.setVolume(_sfxVolume); }
-        // }
-        
-        // public static float VoiceVolume
-        // {
-        //     get => _voiceVolume;
-        //     set { _voiceVolume = Mathf.Clamp01(value); _voiceBus.setVolume(_voiceVolume); }
-        // }
+        public static float SfxVolume
+        {
+            get => _sfxVolume;
+            set { _sfxVolume = Mathf.Clamp01(value); _sfxBus.setVolume(_sfxVolume); }
+        }
+
+        public static float VoiceVolume
+        {
+            get => _voiceVolume;
+            set { _voiceVolume = Mathf.Clamp01(value); _voiceBus.setVolume(_voiceVolume); }
+        }
+        */
 
         public static void SetBusVolume(string busPath, float volume) =>
             RuntimeManager.GetBus(busPath).setVolume(Mathf.Clamp01(volume));

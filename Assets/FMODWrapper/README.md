@@ -30,8 +30,8 @@
 ### Настройка сцены
 
 1. Добавьте на камеру игрока компонент `StudioListener` из пакета FMOD.
-2. Создайте пустой `GameObject`, добавьте `MusicPlayer` если нужна музыка с кроссфейдом.
-3. Вызовите `FMODWrapper.Initialize()` из вашего точки входа (bootstrapper / стартовая сцена).
+2. Вызовите `FMODWrapper.Initialize()` из вашей точки входа (bootstrapper / стартовая сцена).
+3. `MusicPlayer` — статический класс, дополнительной настройки не требует.
 
 ### asmdef
 
@@ -310,12 +310,14 @@ handle.SetCallback((type, eventInstance, parameters) =>
 
 ### Поиск активных Handle
 
-```csharp
-// Первый активный Handle по пути события
-FMODEventHandle existing = FMODWrapper.GetHandle("event:/Music/Combat");
+Handle идентифицируются по `FMOD.GUID` (хранится в `EventGuid`), а не по строковому пути.
 
-// Все активные Handle
-List<FMODEventHandle> all = FMODWrapper.GetHandles("event:/SFX/Footstep");
+```csharp
+// Первый активный Handle по GUID события
+FMODEventHandle existing = FMODWrapper.GetHandle(eventRef.Guid);
+
+// Все активные Handle с тем же GUID
+List<FMODEventHandle> all = FMODWrapper.GetHandles(eventRef.Guid);
 ```
 
 ---
@@ -359,46 +361,44 @@ bool paused  = _fmodAS.IsPaused;
 
 ## 9. MusicPlayer — фоновая музыка
 
-Синглтон-компонент с кроссфейдом. Добавьте на любой `GameObject` в сцене.
-
-### Настройка в Inspector
-
-| Поле | Описание |
-|---|---|
-| Default Crossfade | Длительность кроссфейда по умолчанию (сек) |
+**Статический класс.** Не требует `GameObject` и не является MonoBehaviour. Все методы вызываются напрямую без `Instance`.
 
 ### Использование
 
 ```csharp
-// Сменить трек с кроссфейдом по умолчанию
-MusicPlayer.Instance.Play(eventRef);
+// Сменить трек с кроссфейдом по умолчанию (1 сек)
+MusicPlayer.Play(eventRef);
 
 // Мгновенное переключение
-MusicPlayer.Instance.Play(eventRef, crossfade: 0f);
+MusicPlayer.Play(eventRef, crossfade: 0f);
 
 // Кастомный кроссфейд
-MusicPlayer.Instance.Play(eventRef, crossfade: 2.5f);
+MusicPlayer.Play(eventRef, crossfade: 2.5f);
 
 // С начальными параметрами
-MusicPlayer.Instance.Play(eventRef, crossfade: 1f,
-    ("MusicIntensity", 0f));
+MusicPlayer.Play(eventRef, crossfade: 1f, new Dictionary<string, float>
+{
+    { "MusicIntensity", 0f }
+});
 
 // Остановить
-MusicPlayer.Instance.Stop();
-MusicPlayer.Instance.Stop(allowFadeout: false);
+MusicPlayer.Stop();
+MusicPlayer.Stop(allowFadeout: false);
 
 // Пауза
-MusicPlayer.Instance.SetPaused(true);
+MusicPlayer.SetPaused(true);
 
 // Параметр на ходу
-MusicPlayer.Instance.SetParam("MusicIntensity", 0.8f);
+MusicPlayer.SetParam("MusicIntensity", 0.8f);
+
+// Громкость
+MusicPlayer.SetVolume(0.5f);
 
 // Адаптивная музыка — переход между секциями
-MusicPlayer.Instance.KeyOff();
+MusicPlayer.KeyOff();
 
 // Состояние
-string path  = MusicPlayer.Instance.CurrentTrackPath;
-bool playing = MusicPlayer.Instance.IsPlaying;
+bool playing = MusicPlayer.IsPlaying;
 ```
 
 > Кроссфейд использует `Time.unscaledDeltaTime` — продолжает работать при `Time.timeScale = 0`.
@@ -515,14 +515,14 @@ void PauseGame()
 {
     Time.timeScale = 0f;
     FMODWrapper.StartSnapshot("snapshot:/Paused");
-    MusicPlayer.Instance.SetPaused(true);
+    MusicPlayer.SetPaused(true);
 }
 
 void ResumeGame()
 {
     Time.timeScale = 1f;
     FMODWrapper.StopSnapshot("snapshot:/Paused");
-    MusicPlayer.Instance.SetPaused(false);
+    MusicPlayer.SetPaused(false);
 }
 ```
 
@@ -565,18 +565,20 @@ void StopFiring()
 ```csharp
 void OnCombatStart()
 {
-    MusicPlayer.Instance.Play(eventRef_combat, crossfade: 1.5f,
-        ("MusicIntensity", 0f));
+    MusicPlayer.Play(eventRef_combat, crossfade: 1.5f, new Dictionary<string, float>
+    {
+        { "MusicIntensity", 0f }
+    });
 }
 
 void OnCombatEscalate()
 {
-    MusicPlayer.Instance.SetParam("MusicIntensity", 1f);
+    MusicPlayer.SetParam("MusicIntensity", 1f);
 }
 
 void OnCombatEnd()
 {
-    MusicPlayer.Instance.Play(eventRef_ambient, crossfade: 3f);
+    MusicPlayer.Play(eventRef_ambient, crossfade: 3f);
 }
 ```
 

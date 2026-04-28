@@ -4,6 +4,7 @@ namespace FMODWrapper
     {
         public static class Sfx
         {
+            // Examples
             // public const string Explosion = "event:/SFX/Explosion";
             // public const string Footstep  = "event:/SFX/Footstep";
             // public const string GunShot   = "event:/SFX/GunShot";
@@ -13,6 +14,7 @@ namespace FMODWrapper
 
         public static class Music
         {
+            // Examples
             // public const string MainMenu = "event:/Music/MainMenu";
             // public const string Combat   = "event:/Music/Combat";
             // public const string Ambient  = "event:/Music/Ambient";
@@ -20,12 +22,14 @@ namespace FMODWrapper
 
         public static class Voice
         {
+            // Examples
             // public const string PlayerHurt = "event:/Voice/Player/Hurt";
             // public const string PlayerDie  = "event:/Voice/Player/Die";
         }
 
         public static class Snapshots
         {
+            // Examples
             // public const string Paused     = "snapshot:/Paused";
             // public const string UnderWater = "snapshot:/UnderWater";
         }
@@ -33,6 +37,7 @@ namespace FMODWrapper
 
     public static class Params
     {
+        // Examples
         // public const string MusicIntensity   = "MusicIntensity";
         // public const string AmbienceArea     = "AmbienceArea";
         // public const string DayCycle         = "DayCycle";
@@ -44,14 +49,17 @@ namespace FMODWrapper
 
     public static class Banks
     {
+        // Core
         public const string Master        = "Master";
         public const string MasterStrings = "Master.strings";
         // public const string Core          = "Core";
         
+        // By zones
         // public const string CitySlums    = "City_Slums";
         // public const string ForestNorth  = "Forest_North";
         // public const string DesertSouth  = "Desert_South";
         
+        // By scenes
         // public const string Level01      = "Level_01";
         // public const string Level02      = "Level_02";
     }
@@ -59,6 +67,8 @@ namespace FMODWrapper
     public static class Buses
     {
         public const string Master = "bus:/";
+        
+        // Examples
         // public const string Music  = "bus:/Music";
         // public const string Sfx    = "bus:/SFX";
         // public const string Voice  = "bus:/Voice";
@@ -66,6 +76,7 @@ namespace FMODWrapper
 
     public static class Vcas
     {
+        // Examples
         // public const string Master = "vca:/Master";
         // public const string Music  = "vca:/Music";
         // public const string Sfx    = "vca:/SFX";

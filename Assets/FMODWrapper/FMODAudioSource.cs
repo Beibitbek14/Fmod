@@ -1,5 +1,6 @@
 using FMODUnity;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace FMODWrapper
 {
@@ -8,7 +9,7 @@ namespace FMODWrapper
     public class FMODAudioSource : MonoBehaviour
     {
         [Header("Event")]
-        [SerializeField] private EventReference @event;
+        [SerializeField] private EventReference eventRef;
         [SerializeField] private bool playOnAwake;
 
         [Header("Playback")]
@@ -21,7 +22,6 @@ namespace FMODWrapper
         private FMODEventHandle _fmodEventHandle;
         private Rigidbody _rb;
         
-
         public bool IsPlaying => _fmodEventHandle?.IsPlaying ?? false;
         public bool IsPaused => _fmodEventHandle?.IsPaused ?? false;
 
@@ -39,7 +39,7 @@ namespace FMODWrapper
             Stop();
 
             _fmodEventHandle = FMODWrapper
-                .Play(@event)
+                .Play(eventRef)
                 .WithVolume(volume)
                 .WithPriority(priority)
                 .Start();

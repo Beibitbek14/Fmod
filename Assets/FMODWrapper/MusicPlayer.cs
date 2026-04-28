@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using FMODUnity;
@@ -5,40 +6,21 @@ using UnityEngine;
 
 namespace FMODWrapper
 {
-    [DisallowMultipleComponent]
-    public class MusicPlayer : MonoBehaviour
-    {
-        public static MusicPlayer Instance { get; private set; }
+    public static class MusicPlayer
+    { 
+        private static readonly float DefaultCrossfade = 1f;
 
-        [Header("Defaults")]
-        [SerializeField] [Range(0f, 5f)] private float defaultCrossfade = 1f;
+        private static FMODEventHandle _currentTrack;
+        private static FMODEventHandle _previousTrack;
+        private static CancellationTokenSource _fadeCts;
 
-        private FMODEventHandle _currentTrack;
-        private FMODEventHandle _previousTrack;
-        private CancellationTokenSource _fadeCts;
+        public static bool IsPlaying => _currentTrack?.IsPlaying ?? false;
 
-        public string CurrentTrackPath => _currentTrack?.EventPath;
-        public bool IsPlaying => _currentTrack?.IsPlaying ?? false;
-
-        private void Awake()
+        public static void Play(EventReference eventRef, float crossfade = -1f, Dictionary<string, float> initialParams = null)
         {
-            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
+            if (_currentTrack is { IsValid: true } && _currentTrack.EventGuid == eventRef.Guid) return;
 
-        private void OnDestroy()
-        {
-            StopFade();
-            _currentTrack?.Stop(allowFadeout: false, release: true);
-            _previousTrack?.Stop(allowFadeout: false, release: true);
-        }
-
-        public void Play(EventReference eventRef, float crossfade = -1f, params (string name, float value)[] initialParams)
-        {
-            if (_currentTrack is { IsValid: true } && _currentTrack.EventPath == eventRef.Path) return;
-
-            float fade = crossfade < 0f ? defaultCrossfade : crossfade;
+            float fade = crossfade < 0f ? DefaultCrossfade : crossfade;
 
             StopFade();
             _previousTrack = _currentTrack;
@@ -46,8 +28,9 @@ namespace FMODWrapper
             _currentTrack = FMODWrapper.CreateHandle(eventRef);
             if (!_currentTrack.IsValid) return;
 
-            foreach (var (paramName, value) in initialParams)
-                _currentTrack.SetParam(paramName, value);
+            if (initialParams != null)
+                foreach (var kv in initialParams)
+                    _currentTrack.SetParam(kv.Key, kv.Value);
 
             _currentTrack.SetVolume(fade > 0f ? 0f : 1f);
             _currentTrack.Play();
@@ -60,19 +43,28 @@ namespace FMODWrapper
                 StopPreviousImmediate();
         }
 
-        public void Stop(bool allowFadeout = true)
+        public static void Stop(bool allowFadeout = true)
         {
             StopFade();
             _currentTrack?.Stop(allowFadeout, release: true);
             _currentTrack = null;
         }
+        
+        private static void StopAll()
+        {
+            StopFade();
+            _currentTrack?.Stop(allowFadeout: false, release: true);
+            _previousTrack?.Stop(allowFadeout: false, release: true);
+            _currentTrack = null;
+            _previousTrack = null;
+        }
 
-        public void SetPaused(bool paused) => _currentTrack?.SetPaused(paused);
-        public void SetParam(string paramName, float value) => _currentTrack?.SetParam(paramName, value);
-        public void SetVolume(float volume) => _currentTrack?.SetVolume(volume);
-        public void KeyOff() => _currentTrack?.KeyOff();
+        public static void SetPaused(bool paused) => _currentTrack?.SetPaused(paused);
+        public static void SetParam(string paramName, float value) => _currentTrack?.SetParam(paramName, value);
+        public static void SetVolume(float volume) => _currentTrack?.SetVolume(volume);
+        public static void KeyOff() => _currentTrack?.KeyOff();
 
-        private async UniTaskVoid CrossfadeTask(float duration, CancellationToken ct)
+        private static async UniTaskVoid CrossfadeTask(float duration, CancellationToken ct)
         {
             float elapsed = 0f;
 
@@ -95,7 +87,7 @@ namespace FMODWrapper
             _fadeCts = null;
         }
 
-        private void StopPreviousImmediate()
+        private static void StopPreviousImmediate()
         {
             _previousTrack?.Stop(allowFadeout: false, release: true);
             _previousTrack = null;
@@ -104,7 +96,7 @@ namespace FMODWrapper
             _fadeCts = null;
         }
 
-        private void StopFade()
+        private static void StopFade()
         {
             _fadeCts?.Cancel();
             _fadeCts?.Dispose();

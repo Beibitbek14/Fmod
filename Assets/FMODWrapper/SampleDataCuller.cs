@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using FMOD.Studio;
 using FMODUnity;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace FMODWrapper
 {
@@ -11,7 +12,7 @@ namespace FMODWrapper
     public class SampleDataCuller : MonoBehaviour
     {
         [Header("Event")]
-        [SerializeField] private EventReference @event;
+        [SerializeField] private EventReference eventRef;
 
         [Header("Distance Thresholds")]
         [SerializeField] private float unloadThreshold = Config.Distance.UnloadThreshold;
@@ -63,9 +64,9 @@ namespace FMODWrapper
 
         private void ResolveDescription()
         {
-            if (string.IsNullOrEmpty(@event.Path)) return;
+            if (eventRef.IsNull) return;
 
-            _description = RuntimeManager.GetEventDescription(@event);
+            _description = RuntimeManager.GetEventDescription(eventRef);
             _descriptionValid = _description.isValid();
         }
 
